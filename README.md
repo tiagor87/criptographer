@@ -5,7 +5,7 @@ Pretty Good Privacy (PGP).
 
 * Crie um arquivo na pasta do executável com o nome __PublicKey__,
 o conteúdo do arquivo deverá ser como no exemplo abaixo:
-```
+```text
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: BCPG C# v1.6.1.0
 
