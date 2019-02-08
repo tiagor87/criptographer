@@ -5,7 +5,7 @@
 Sistema para encriptar arquivos de forma fácil utilizando o padrão
 Pretty Good Privacy (PGP).
 
-* Crie um arquivo na pasta do executável com um nome qualquer mas com
+* Crie um arquivo na pasta do executável com um nome qualquer, mas com
  extensão __.gpg__, __.pgp__ ou __.asc__.
     
     O conteúdo do arquivo deverá ser como no exemplo abaixo, em texto ou binário:
