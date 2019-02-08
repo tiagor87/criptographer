@@ -3,8 +3,10 @@
 Sistema para encriptar arquivos de forma fácil utilizando o padrão
 Pretty Good Privacy (PGP).
 
-* Crie um arquivo na pasta do executável com o nome __PublicKey__,
-o conteúdo do arquivo deverá ser como no exemplo abaixo:
+* Crie um arquivo na pasta do executável com um nome qualquer mas com
+ extensão __.gpg__, __.pgp__ ou __.asc__.
+    
+    O conteúdo do arquivo deverá ser como no exemplo abaixo, em texto ou binário:
 ```text
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: BCPG C# v1.6.1.0
@@ -26,6 +28,6 @@ XadsnnbNEHWv2WqK16mPg3uOdwMpIaGoPyFuTGhGHFqu
 
 ```
 * Coloque o arquivo que deseja criptografar na pasta __Input__;
-    * O aplicativo detectará a inclusão do arquivo.
+    * O aplicativo detectará a inclusão ou atualização do arquivo.
 * Aguarde a aplicação finalizar o processo;
 * Obtenha o arquivo encriptado na pasta __Output__.

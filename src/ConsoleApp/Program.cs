@@ -1,63 +1,80 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.Caching;
 using System.Threading;
 using PgpCore;
 
 namespace Encryptor.ConsoleApp
 {
-    class Program
+    internal static class Program
     {
-        private static string _keyPath = Path.Combine(Directory.GetCurrentDirectory(), "PublicKey");
-        private static string _inputDir = Path.Combine(Directory.GetCurrentDirectory(), "Input");
-        private static string _outputDir = Path.Combine(Directory.GetCurrentDirectory(), "Output");
-        static void Main(string[] args)
+        private static string _keyPath;
+        private static readonly string InputDir = Path.Combine(Directory.GetCurrentDirectory(), "Input");
+        private static readonly string OutputDir = Path.Combine(Directory.GetCurrentDirectory(), "Output");
+
+        private static void Main(string[] args)
         {
-            if (Directory.Exists(_inputDir) == false)
+            if (Directory.Exists(InputDir) == false)
             {
-                Console.WriteLine($"Creating input directory: \"{_inputDir}\".");
-                Directory.CreateDirectory(_inputDir);
+                WriteLineInColor($"Creating input directory: \"{InputDir}\".", ConsoleColor.Blue);
+                Directory.CreateDirectory(InputDir);
             }
 
-            if (Directory.Exists(_outputDir) == false)
+            if (Directory.Exists(OutputDir) == false)
             {
-                Console.WriteLine($"Creating output directory: \"{_outputDir}\".");
-                Directory.CreateDirectory(_outputDir);
+                WriteLineInColor($"Creating output directory: \"{OutputDir}\".", ConsoleColor.Blue);
+                Directory.CreateDirectory(OutputDir);
             }
 
-            while (File.Exists(_keyPath) == false)
+            
+            while (TryGetKeyFilePath(out _keyPath) == false)
             {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine($"Please, put the public key in \"{_keyPath}\".");
-                Console.ForegroundColor = ConsoleColor.White;
-                Wait("Press a key to continue...");
+                WriteLineInColor($"Please, put the public key in \"{Directory.GetCurrentDirectory()}\" with extension \"pgp\", \"gpg\" or \"asc\".", ConsoleColor.DarkYellow);
+                Wait();
             }
+
+            WriteLineInColor($"Found public key in \"{_keyPath}\".", ConsoleColor.Green);
 
             var cache = MemoryCache.Default;
             
             using (var fileWatcher = new FileSystemWatcher())
             {
-                Console.WriteLine($"Listening to file changes in \"{_inputDir}\".");
-                fileWatcher.Path = _inputDir;
+                WriteLineInColor($"Please, put the files to encrypting in \"{InputDir}\".", ConsoleColor.DarkYellow);
+                fileWatcher.Path = InputDir;
                 fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 fileWatcher.Filter = "*.*";
                 fileWatcher.Changed += (source, @event) =>
                 {
-                    Console.WriteLine($"Detected file \"{@event.FullPath}\"");
-                    cache.AddOrGetExisting(@event.FullPath, @event,
+                    WriteLineInColor($"Encrypting file \"{@event.Name}\"...", ConsoleColor.Blue);
+
+                    if (cache.Add(@event.FullPath, @event,
                         new CacheItemPolicy
                         {
-                            AbsoluteExpiration = DateTime.UtcNow.AddSeconds(10),
+                            SlidingExpiration = TimeSpan.FromMilliseconds(250),
+                            RemovedCallback = EncryptFile
+                        }))
+                    {
+                        return;
+                    }
+                    
+                    // If exists
+                    // Remove and add it again to update expiration
+                    cache.Remove(@event.FullPath);
+                    cache.Add(@event.FullPath, @event,
+                        new CacheItemPolicy
+                        {
+                            SlidingExpiration = TimeSpan.FromMilliseconds(250),
                             RemovedCallback = EncryptFile
                         });
                 };
                 fileWatcher.IncludeSubdirectories = true;
                 fileWatcher.EnableRaisingEvents = true;
-                Wait("Press a key to exit...");
+                Wait();
             } 
         }
 
-        static void EncryptFile(CacheEntryRemovedArguments arguments)
+        private static void EncryptFile(CacheEntryRemovedArguments arguments)
         {
             if (arguments.RemovedReason != CacheEntryRemovedReason.Expired)
             {
@@ -65,38 +82,56 @@ namespace Encryptor.ConsoleApp
             }
 
             var @event = (FileSystemEventArgs) arguments.CacheItem.Value;
-            Console.WriteLine($"Encrypting file \"{@event.FullPath}\".");
             try
             {
                 using (var pgp = new PGP())
                 {
-                    var output = @event.FullPath.Replace(_inputDir, _outputDir);
-
+                    var output = @event.FullPath.Replace(InputDir, OutputDir);
+                    
                     pgp.EncryptFile(
                         @event.FullPath,
                         output,
                         _keyPath);
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"File encrypted to \"{output}\" with \"{_keyPath}\".\n");
+                    WriteLineInColor($"File was successful encrypted.", ConsoleColor.Green);
+                    WriteLineInColor($"Input: {@event.Name};\nOutput: \"{Path.GetFileName(output)}\";\nkey: \"{Path.GetFileName(_keyPath)}\".", ConsoleColor.DarkGreen);
                 }
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Failed to encrypt file \"{@event.FullPath}\".\nError message: \"{ex.Message}\"");
-            }
-            finally
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine("Press a key to exit...");
+                WriteLineInColor($"Failed to encrypt file \"{@event.Name}\".\nError message: \"{ex.Message}\"", ConsoleColor.Red);
             }
         }
 
-        static void Wait(string message)
+        private static void Wait()
         {
-            Console.WriteLine(message);
             Console.ReadKey();
+        }
+
+        private static bool TryGetKeyFilePath(out string keyPath)
+        {
+            keyPath = Directory.GetFiles(Directory.GetCurrentDirectory())
+                .FirstOrDefault(x =>
+                    x.EndsWith("gpg", StringComparison.InvariantCultureIgnoreCase)
+                    || x.EndsWith("pgp", StringComparison.InvariantCultureIgnoreCase)
+                    || x.EndsWith("asc", StringComparison.InvariantCultureIgnoreCase));
+            return string.IsNullOrWhiteSpace(keyPath) == false;
+        }
+
+        private static string _oldMessage;
+
+        private static void WriteLineInColor(string message, ConsoleColor color)
+        {
+            if (_oldMessage == message)
+            {
+                return;
+            }
+
+            _oldMessage = message;
+            var prevColor = Console.ForegroundColor;
+            Console.ForegroundColor = color;
+            Console.WriteLine(message);
+            Console.ForegroundColor = prevColor;
         }
     }
 }
