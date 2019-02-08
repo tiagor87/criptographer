@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/kwgvp9hrqr0aeir4/branch/master?svg=true)](https://ci.appveyor.com/project/tiagor87/encryptor/branch/master)
+
 # Encryptor
 
 Sistema para encriptar arquivos de forma fácil utilizando o padrão
