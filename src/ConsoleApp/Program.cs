@@ -42,7 +42,7 @@ namespace Encryptor.ConsoleApp
             {
                 WriteLineInColor($"Please, put the files to encrypting in \"{InputDir}\".", ConsoleColor.DarkYellow);
                 fileWatcher.Path = InputDir;
-                fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                fileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime;
                 fileWatcher.Filter = "*.*";
                 fileWatcher.Changed += (source, @event) =>
                 {
